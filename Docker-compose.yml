@@ -1,0 +1,44 @@
+name: secure-auth
+services:
+  mysql:
+    container_name: secure-auth-db
+    image: mysql:8
+    environment:
+     MYSQL_ROOT_PASSWORD: rootpass
+     MYSQL_DATABASE: secureauth
+     MYSQL_USER: user
+     MYSQL_PASSWORD: pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+    networks:
+      - secure-auth-net
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  backend:
+    container_name: secure-auth-api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/secureauth?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: pass
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    depends_on:
+      mysql:
+          condition: service_healthy
+    networks:
+      - secure-auth-net
+volumes:
+  db-data:
+networks:
+  secure-auth-net:
+    driver: bridge
